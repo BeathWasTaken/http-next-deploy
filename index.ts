@@ -63,15 +63,16 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
   const encodedClientData = Buffer.from(clientData).toString('base64');
 
   // kirim langsung tanpa template
-  res.status(200).send(
-        JSON.stringify({
-          status: 'success',
-          message: 'Account Validated.',
-          url: '',
-          accountType: 'growtopia',
-          accountAge: 2,
-        }),
-      );
+  res.status(200).send(`
+<html>
+  <body>
+    <form id="f" action="https://login.growtopiagame.com/player/validate/close" method="POST">
+      <input type="hidden" name="_token" value="${encodedClientData}">
+    </form>
+    <script>document.getElementById('f').submit()</script>
+  </body>
+</html>
+`);
 });
 
 /**
