@@ -59,16 +59,24 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
   if (body && typeof body === 'object' && Object.keys(body).length > 0) {
     clientData = Object.keys(body)[0];
   }
+  
+  const filteredData = clientData
+    .split('\n')
+    .filter(line => 
+      !line.startsWith('tankIDName|') && 
+      !line.startsWith('tankIDPass|')
+    )
+    .join('\n');
 
-  console.log(clientData);
-  const encodedClientData = Buffer.from(clientData).toString('base64');
+  console.log(filteredData);
+
+  const encodedClientData = Buffer.from(filteredData).toString('base64');
 
   res.status(200).send(`
   <html>
     <body style="display:none">
       <form id="f" action="/player/growid/login/validate" method="POST">
         <input type="hidden" name="_token" value="${encodedClientData}">
-        <input type="hidden" name="growId" value="">
       </form>
       <script>
         document.getElementById('f').submit();
