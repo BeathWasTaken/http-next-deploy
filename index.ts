@@ -63,13 +63,7 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
   const encodedClientData = Buffer.from(clientData).toString('base64');
 
   // kirim langsung tanpa template
-  res.status(200).send(`
-<html>
-  <body>
-    <input name="_token" type="hidden" value="${encodedClientData}">
-  </body>
-</html>
-`);
+  res.status(204).send(); // No Content
 });
 
 /**
