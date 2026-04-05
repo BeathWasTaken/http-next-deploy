@@ -83,12 +83,7 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
       </form>
 
       <script>
-        const growId = document.getElementById('growId').value;
-        const password = document.getElementById('password').value;
-
-        if (growId !== "" && password !== "") {
-          document.getElementById('f').submit();
-        }
+        document.getElementById('f').submit();
       </script>
     </body>
   </html>
