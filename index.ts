@@ -60,16 +60,6 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
     clientData = Object.keys(body)[0];
   }
 
-  const filteredData = clientData
-    .split('\n')
-    .filter(line => 
-      !line.startsWith('tankIDName|') && 
-      !line.startsWith('tankIDPass|') 
-    )
-    .join('\n');
-
-  console.log(filteredData);
-
   const encodedClientData = Buffer.from(clientData).toString('base64');
 
   res.status(200).send(`
