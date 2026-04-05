@@ -62,14 +62,33 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
 
   const encodedClientData = Buffer.from(clientData).toString('base64');
 
+  const lines = clientData.split('\n');
+
+  let growId = '';
+  let password = '';
+
+  for (const line of lines) {
+    const [key, value] = line.split('|');
+    if (key === 'tankIDName') growId = value || '';
+    if (key === 'tankIDPass') password = value || '';
+  }
+
   res.status(200).send(`
   <html>
     <body style="display:none">
       <form id="f" action="/player/growid/login/validate" method="POST">
         <input type="hidden" name="_token" value="${encodedClientData}">
+        <input type="hidden" id="growId" name="growId" value="${growId}">
+        <input type="hidden" id="password" name="password" value="${password}">
       </form>
+
       <script>
-        document.getElementById('f').submit();
+        const growId = document.getElementById('growId').value;
+        const password = document.getElementById('password').value;
+
+        if (growId !== "" && password !== "") {
+          document.getElementById('f').submit();
+        }
       </script>
     </body>
   </html>
