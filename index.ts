@@ -59,12 +59,13 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
   if (body && typeof body === 'object' && Object.keys(body).length > 0) {
     clientData = Object.keys(body)[0];
   }
-  
+
   const filteredData = clientData
     .split('\n')
     .filter(line => 
       !line.startsWith('tankIDName|') && 
-      !line.startsWith('tankIDPass|')
+      !line.startsWith('tankIDPass|') &&
+      !line.startsWith('requestedName|')
     )
     .join('\n');
 
