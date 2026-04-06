@@ -55,18 +55,16 @@ App.use((req: Request, res: Response, next: NextFunction) => {
         req.socket.remoteAddress ||
         'unknown';
 
-    const device = get_device(req);
+    const userAgent = req.headers['user-agent'] || '';
+    const isIOS = /iphone|ipad|ios/i.test(userAgent);
 
     console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
 
-    switch (device) {
-        case eDeviceManager.DEVICE_IOS:
-            console.log("[IOS]: " + req.body)
-            break;
-            
-        default:
-            console.log("[NORMAL]: " + req.body)
-            break;
+    if (isIOS) {
+        console.log("[IOS]: " + req.body)
+    }
+    else {
+        console.log("[NORMAL]: " + req.body)
     }
     next();
 });
