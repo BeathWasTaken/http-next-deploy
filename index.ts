@@ -56,7 +56,7 @@ App.use((req: Request, res: Response, next: NextFunction) => {
     'unknown';
 
   console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
-  console.log(req.body);
+  console.log(req.body.clientData);
   next();
 });
 
