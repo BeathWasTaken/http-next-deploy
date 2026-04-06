@@ -50,14 +50,25 @@ App.use(Limiter);
 App.use(express.static(path.join(process.cwd(), 'public')));
 
 App.use((req: Request, res: Response, next: NextFunction) => {
-  const clientIp =
-    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-    req.socket.remoteAddress ||
-    'unknown';
+    const clientIp =
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+        req.socket.remoteAddress ||
+        'unknown';
 
-  console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
-  console.log(req.body);
-  next();
+    const device = get_device(req);
+
+    console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
+
+    switch (device) {
+        case eDeviceManager.DEVICE_IOS:
+            console.log("[IOS]: " + req.body)
+            break;
+            
+        default:
+            console.log("[NORMAL]: " + req.body)
+            break;
+    }
+    next();
 });
 
 App.all('/', (_req: Request, res: Response) => {
