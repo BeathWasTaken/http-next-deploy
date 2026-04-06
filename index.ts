@@ -65,7 +65,7 @@ App.use((req: Request, res: Response, next: NextFunction) => {
             break;
             
         default:
-            console.log("[NORMAL]: " + req.body)
+            console.log("[NORMAL]: " + req.body.clientData)
             break;
     }
     next();
