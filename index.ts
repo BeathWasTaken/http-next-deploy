@@ -151,53 +151,64 @@ App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
 });
 
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
-    let refreshToken: string | undefined;
+    try {
+        let refreshToken: string | undefined;
 
-    if (typeof req.body === 'object' && req.body !== null) {
-        const formData = req.body as Record<string, string>;
+        if (typeof req.body === 'object' && req.body !== null) {
+            const formData = req.body as Record<string, string>;
 
-        if ('refreshToken' in formData) {
-            refreshToken = formData.refreshToken;
-        } 
-        else if (Object.keys(formData).length === 1) {
-            const rawPayload = Object.keys(formData)[0];
-            const params = new URLSearchParams(rawPayload);
-            refreshToken = params.get('refreshToken') || undefined;
+            if ('refreshToken' in formData) {
+                refreshToken = formData.refreshToken;
+            } 
+            else if (Object.keys(formData).length === 1) {
+                const rawPayload = Object.keys(formData)[0];
+                const params = new URLSearchParams(rawPayload);
+                refreshToken = params.get('refreshToken') || undefined;
+            }
+        }
+
+        if (!refreshToken) {
+            return res.json({
+                status: 'error',
+                message: 'Missing refreshToken',
+            });
+        }
+
+        const decoded = Buffer.from(refreshToken, 'base64').toString('utf-8');
+        const token = Buffer.from(decoded).toString('base64');
+        const device = get_device(req);
+        
+        switch (device) {
+            case eDeviceManager.DEVICE_IOS:
+                res.setHeader('Content-Type', 'application/json');
+                return res.json({
+                    status: 'success',
+                    message: 'Account Validated.',
+                    token,
+                    url: '',
+                    accountType: 'growtopia',
+                    accountAge: 2,
+                });
+                break;
+            
+            default:
+                res.send(JSON.stringify({
+                    status: 'success',
+                    message: 'Account Validated.',
+                    token,
+                    url: '',
+                    accountType: 'growtopia',
+                    accountAge: 2,
+                }));
+                break;
         }
     }
-
-    if (!refreshToken) {
-        return res.json({
+    catch (error) {
+        console.log(`[ERROR]: ${error}`);
+        res.json({
             status: 'error',
-            message: 'Missing refreshToken',
+            message: 'Internal Server Error',
         });
-    }
-
-    const decoded = Buffer.from(refreshToken, 'base64').toString('utf-8');
-    const token = Buffer.from(decoded).toString('base64');
-    const device = get_device(req);
-    
-    switch (device) {
-        case eDeviceManager.DEVICE_IOS:
-            res.setHeader('Content-Type', 'application/json');
-            return res.json({
-                status: 'success',
-                message: 'Account Validated.',
-                token,
-                url: '',
-                accountType: 'growtopia',
-            });
-            break;
-        
-        default:
-            res.send(JSON.stringify({
-                status: 'success',
-                message: 'Account Validated.',
-                token,
-                url: '',
-                accountType: 'growtopia',
-            }));
-            break;
     }
 });
 
