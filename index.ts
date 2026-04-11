@@ -44,21 +44,47 @@ App.use((req: Request, res: Response, next: NextFunction) => {
 
     const device = get_device(req);
 
-    console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
+    console.log(`\n[REQ] ${req.method} ${req.path} → ${clientIp}`);
+
+    // 🔥 DEBUG FULL REQUEST (KHUSUS iOS)
+    if (device === eDeviceManager.DEVICE_IOS) {
+        console.log("=== IOS DEBUG START ===");
+        console.log("HEADERS:", req.headers);
+        console.log("BODY TYPE:", typeof req.body);
+        console.log("BODY:", req.body);
+        console.log("QUERY:", req.query);
+        console.log("=== IOS DEBUG END ===");
+    }
 
     let clientData = '';
-    if (req.body && typeof req.body === 'object') {
-        clientData = Object.keys(req.body)[0] || '';
+
+    // handle string (iOS raw)
+    if (typeof req.body === 'string') {
+        clientData = req.body;
     }
 
-    switch (device) {
-        case eDeviceManager.DEVICE_IOS:
-            console.log("[IOS]: " + clientData);
-            break;
-        default:
-            console.log("[NORMAL]: " + clientData);
-            break;
+    // handle object
+    else if (req.body && typeof req.body === 'object') {
+        const keys = Object.keys(req.body);
+
+        if (keys.length === 1 && keys[0].includes('|')) {
+            clientData = keys[0];
+        } else if (req.body.refreshToken) {
+            clientData = req.body.refreshToken;
+        } else if (req.body.clientData) {
+            clientData = req.body.clientData;
+        } else {
+            clientData = JSON.stringify(req.body);
+        }
     }
+
+    if (!clientData) {
+        clientData = '[EMPTY BODY]';
+    }
+
+    console.log(
+        `[${device === eDeviceManager.DEVICE_IOS ? "IOS" : "NORMAL"}]: ${clientData}`
+    );
 
     next();
 });
@@ -142,7 +168,7 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
     }
 });
 
-App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
+App.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
     return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
