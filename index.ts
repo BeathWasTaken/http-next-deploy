@@ -34,6 +34,7 @@ App.set('trust proxy', 1);
 App.disable('x-powered-by');
 App.use(express.json());
 App.use(express.urlencoded({ extended: true }));
+App.use(express.text({ type: "*/*" }));
 
 App.use((req: Request, _res: Response, next: NextFunction) => {
     const clientIp =
@@ -166,8 +167,15 @@ App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
 
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
     try {
-        let refreshToken = req.body.refreshToken;
-        let clientData = req.body.clientData;
+        let refreshToken = '';
+        let clientData = '';
+
+        if (typeof req.body === 'string') {
+            clientData = req.body;
+        } else if (req.body && typeof req.body === 'object') {
+            refreshToken = req.body.refreshToken || '';
+            clientData = req.body.clientData || '';
+        }
 
         if (!refreshToken && !clientData) {
             return res.json({
@@ -176,38 +184,32 @@ App.post('/player/growid/validate/checktoken', async (req: Request, res: Respons
             });
         }
 
-        const decoded = Buffer.from(refreshToken || clientData, 'base64').toString('utf-8');
+        const raw = refreshToken || clientData;
+
+        const decoded = Buffer.from(raw, 'base64').toString('utf-8');
         const token = Buffer.from(decoded).toString('base64');
+
         const device = get_device(req);
-        
-        switch (device) {
-            case eDeviceManager.DEVICE_IOS:
-                res.setHeader('Content-Type', 'application/json');
-                return res.json({
-                    status: 'success',
-                    message: 'Account Validated.',
-                    token,
-                    url: '',
-                    accountType: 'growtopia',
-                    accountAge: 2,
-                });
-                break;
-            
-            default:
-                res.send(JSON.stringify({
-                    status: 'success',
-                    message: 'Account Validated.',
-                    token,
-                    url: '',
-                    accountType: 'growtopia',
-                    accountAge: 2,
-                }));
-                break;
+
+        const response = {
+            status: 'success',
+            message: 'Account Validated.',
+            token,
+            url: '',
+            accountType: 'growtopia',
+            accountAge: 2,
+        };
+
+        if (device === eDeviceManager.DEVICE_IOS) {
+            res.setHeader('Content-Type', 'application/json');
+            return res.json(response);
         }
+
+        return res.send(JSON.stringify(response));
     }
     catch (error) {
         console.log(`[ERROR]: ${error}`);
-        res.json({
+        return res.json({
             status: 'error',
             message: 'Internal Server Error',
         });
