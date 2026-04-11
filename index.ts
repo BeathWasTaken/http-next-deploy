@@ -46,19 +46,20 @@ App.use((req: Request, res: Response, next: NextFunction) => {
     console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
 
     let clientData = '';
+
     if (req.body && typeof req.body === 'object') {
-        clientData = Object.keys(req.body)[0] || '';
+        const keys = Object.keys(req.body);
+
+        if (keys.length === 1 && keys[0].includes('|')) {
+            clientData = keys[0];
+        } else if (req.body.clientData) {
+            clientData = req.body.clientData;
+        } else {
+            clientData = JSON.stringify(req.body);
+        }
     }
 
-    switch (device) {
-        case eDeviceManager.DEVICE_IOS:
-            console.log("[IOS]: " + clientData);
-            break;
-        default:
-            console.log("[NORMAL]: " + clientData);
-            break;
-    }
-
+    console.log(`[${device === eDeviceManager.DEVICE_IOS ? "IOS" : "NORMAL"}]: ${clientData}`);
     next();
 });
 
