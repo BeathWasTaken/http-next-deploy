@@ -52,9 +52,14 @@ App.use((req: Request, res: Response, next: NextFunction) => {
 
         if (keys.length === 1 && keys[0].includes('|')) {
             clientData = keys[0];
-        } else if (req.body.clientData) {
+        }
+        else if (req.body.refreshToken) {
+            clientData = req.body.refreshToken;
+        }
+        else if (req.body.clientData) {
             clientData = req.body.clientData;
-        } else {
+        }
+        else {
             clientData = JSON.stringify(req.body);
         }
     }
