@@ -35,7 +35,7 @@ App.disable('x-powered-by');
 App.use(express.json());
 App.use(express.urlencoded({ extended: true }));
 
-App.use((req: Request, res: Response, next: NextFunction) => {
+App.use((req: Request, _res: Response, next: NextFunction) => {
     const clientIp =
         (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
         req.socket.remoteAddress ||
@@ -47,24 +47,37 @@ App.use((req: Request, res: Response, next: NextFunction) => {
 
     let clientData = '';
 
-    if (req.body && typeof req.body === 'object') {
+    if (typeof req.body === 'string') {
+        clientData = req.body;
+    }
+
+    else if (req.body && typeof req.body === 'object') {
         const keys = Object.keys(req.body);
 
         if (keys.length === 1 && keys[0].includes('|')) {
             clientData = keys[0];
         }
-        else if (req.body.refreshToken) {
+        else if (typeof req.body.refreshToken === 'string') {
             clientData = req.body.refreshToken;
         }
-        else if (req.body.clientData) {
+        else if (typeof req.body.clientData === 'string') {
             clientData = req.body.clientData;
+        }
+        else if (typeof req.body._token === 'string') {
+            clientData = `_token=${req.body._token}&growId=${req.body.growId || ''}`;
         }
         else {
             clientData = JSON.stringify(req.body);
         }
     }
+    if (!clientData) {
+        clientData = '[EMPTY BODY]';
+    }
 
-    console.log(`[${device === eDeviceManager.DEVICE_IOS ? "IOS" : "NORMAL"}]: ${clientData}`);
+    console.log(
+        `[${device === eDeviceManager.DEVICE_IOS ? "IOS" : "NORMAL"}]: ${clientData}`
+    );
+
     next();
 });
 
