@@ -32,9 +32,7 @@ function get_device(req: Request) {
 
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
-App.use(express.json());
-App.use(express.urlencoded({ extended: true }));
-App.use(express.text({ type: "*/*" }));
+App.use(express.raw({ type: "*/*" })); // 🔥 paling penting
 
 App.use((req: Request, res: Response, next: NextFunction) => {
     const clientIp =
@@ -44,21 +42,18 @@ App.use((req: Request, res: Response, next: NextFunction) => {
 
     const device = get_device(req);
 
-    console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
+    console.log(`\n[REQ] ${req.method} ${req.path} → ${clientIp}`);
 
     let clientData = '';
-    if (req.body && typeof req.body === 'object') {
-        clientData = Object.keys(req.body)[0] || '';
+
+    // 🔥 HANDLE RAW BUFFER (INI YANG BENER)
+    if (Buffer.isBuffer(req.body)) {
+        clientData = req.body.toString('utf-8');
     }
 
-    switch (device) {
-        case eDeviceManager.DEVICE_IOS:
-            console.log("[IOS]: " + clientData);
-            break;
-        default:
-            console.log("[NORMAL]: " + clientData);
-            break;
-    }
+    console.log(
+        `[${device === eDeviceManager.DEVICE_IOS ? "IOS" : "NORMAL"}]: ${clientData || '[EMPTY BODY]'}`
+    );
 
     next();
 });
@@ -142,7 +137,7 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
     }
 });
 
-App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
+App.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
     return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
@@ -150,22 +145,10 @@ App.all('/player/growid/validate/checktoken', async (req: Request, res: Response
     try {
         let refreshToken: string | undefined;
 
-        if (typeof req.body === 'string') {
-            const params = new URLSearchParams(req.body);
+        if (Buffer.isBuffer(req.body)) {
+            const rawText = req.body.toString('utf-8');
+            const params = new URLSearchParams(rawText);
             refreshToken = params.get('refreshToken') || undefined;
-        }
-
-        else if (typeof req.body === 'object' && req.body !== null) {
-            const formData = req.body as Record<string, string>;
-
-            if ('refreshToken' in formData) {
-                refreshToken = formData.refreshToken;
-            } 
-            else if (Object.keys(formData).length === 1) {
-                const rawPayload = Object.keys(formData)[0];
-                const params = new URLSearchParams(rawPayload);
-                refreshToken = params.get('refreshToken') || undefined;
-            }
         }
 
         if (!refreshToken && req.query.refreshToken) {
