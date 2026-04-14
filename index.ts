@@ -46,8 +46,9 @@ App.use((req: Request, res: Response, next: NextFunction) => {
     console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
 
     let clientData = '';
+    console.log(req.body);
     if (req.body && typeof req.body === 'object') {
-        clientData = Object.keys(req.body)[0] || '';
+        clientData = Object.keys(req.body)[0] || ''; 
     }
 
     switch (device) {
