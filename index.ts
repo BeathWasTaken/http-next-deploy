@@ -147,17 +147,16 @@ App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
 
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
     try {
-        let refreshToken = req.body.refreshToken;
         let clientData = req.body.clientData;
 
-        if (!refreshToken && !clientData) {
+        if (!clientData) {
             return res.json({
                 status: 'error',
-                message: 'Missing refreshToken and clientData',
+                message: 'Missing clientData',
             });
         }
 
-        const decoded = Buffer.from(refreshToken || clientData, 'base64').toString('utf-8');
+        const decoded = Buffer.from(clientData, 'base64').toString('utf-8');
         const token = Buffer.from(decoded).toString('base64');
         const device = get_device(req);
         
