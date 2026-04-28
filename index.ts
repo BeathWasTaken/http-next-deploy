@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 const App = express();
 const Port = 3000;
 
+/* ================= DEVICE DETECTOR ================= */
 const eDeviceManager = {
     DEVICE_WINDOWS: 0,
     DEVICE_ANDROID: 1,
@@ -13,159 +14,106 @@ const eDeviceManager = {
 type eDeviceManager = typeof eDeviceManager[keyof typeof eDeviceManager];
 
 function get_device(req: Request) {
-    const user_agent = (req.headers['user-agent'] || '').toLowerCase();
-    
-    switch (true) {
-        case /iphone|ipad|ios/i.test(user_agent):
-        return eDeviceManager.DEVICE_IOS;
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
 
-        case /android/i.test(user_agent):
-        return eDeviceManager.DEVICE_ANDROID;
+    if (/iphone|ipad|ios/i.test(ua)) return eDeviceManager.DEVICE_IOS;
+    if (/android/i.test(ua)) return eDeviceManager.DEVICE_ANDROID;
+    if (/mac/i.test(ua)) return eDeviceManager.DEVICE_MACOS;
 
-        case /mac/i.test(user_agent) && !/iphone|ipad|ios/i.test(user_agent):
-        return eDeviceManager.DEVICE_MACOS;
-
-        default:
-        return eDeviceManager.DEVICE_WINDOWS;
-    }
+    return eDeviceManager.DEVICE_WINDOWS;
 }
 
+/* ================= MIDDLEWARE ================= */
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
-App.use((req, res, next) => {
-    let data = '';
-
-    req.on('data', chunk => {
-        data += chunk;
-    });
-
-    req.on('end', () => {
-        (req as any).rawBody = data;
-        next();
-    });
-});
-
-App.use(express.text({ type: '*/*' }));
-App.use(express.json());
+/* IMPORTANT: urutan parser */
 App.use(express.urlencoded({ extended: true }));
+App.use(express.json());
+App.use(express.text({ type: '*/*' }));
 
+/* DEBUG + LOGGING */
 App.use((req: Request, res: Response, next: NextFunction) => {
-
     console.log('CONTENT-TYPE:', req.headers['content-type']);
     console.log('BODY TYPE:', typeof req.body);
-    console.log("RAW BODY FINAL:", (req as any).rawBody);
+    console.log('BODY RAW:', req.body);
 
-    const clientIp =
+    const ip =
         (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
         req.socket.remoteAddress ||
         'unknown';
 
-    const device = get_device(req);
-
-    console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
-
-    let clientData = '';
-
-    if (typeof req.body === 'string') {
-        clientData = req.body;
-    }
-    else if (req.body && typeof req.body === 'object') {
-        clientData = Object.keys(req.body)[0] || '';
-    }
-
-    switch (device) {
-        case eDeviceManager.DEVICE_IOS:
-            console.log("[IOS]: " + clientData);
-            break;
-        default:
-            console.log("[NORMAL]: " + clientData);
-            break;
-    }
+    console.log(`[REQ] ${req.method} ${req.path} → ${ip}`);
 
     next();
 });
 
-App.all('/', (_req: Request, res: Response) => {
-  res.send('Hello World!');
-});
+/* ================= ROUTES ================= */
 
 App.post('/player/login/dashboard', async (req: Request, res: Response) => {
-    const body = (req as any).rawBody || '';
-    let clientData = '';
+    const body = req.body;
 
-    if (typeof body === 'string') {
-        clientData = body;
-    }
-    else if (body && typeof body === 'object' && Object.keys(body).length > 0) {
-        clientData = Object.keys(body)[0];
-    }
+    // Parse aman (form-urlencoded / json / string)
+    const params =
+        typeof body === 'string'
+            ? new URLSearchParams(body)
+            : new URLSearchParams(body);
 
-    const encoded = Buffer.from(clientData).toString('base64');
-    const lines = clientData.split('\n');
+    const tokenRaw = params.get('_token') || '';
+    const growId = params.get('growId') || '';
+    const password = params.get('password') || '';
 
-    let growId = '';
-    let password = '';
+    const encoded = Buffer.from(tokenRaw).toString('base64');
 
-    for (const line of lines) {
-        const [key, value] = line.split('|');
-        if (key === 'tankIDName') growId = value || '';
-        if (key === 'tankIDPass') password = value || '';
-    }
-
-    res.status(200).send(
-        `
+    res.send(`
         <html>
             <body style="display:none">
                 <form id="f" action="/player/growid/login/validate" method="POST">
-                <input type="hidden" name="_token" value="${encoded}">
-                <input type="hidden" id="growId" name="growId" value="${growId}">
-                <input type="hidden" id="password" name="password" value="${password}">
+                    <input type="hidden" name="_token" value="${encoded}">
+                    <input type="hidden" name="growId" value="${growId}">
+                    <input type="hidden" name="password" value="${password}">
                 </form>
 
                 <script>
                     document.getElementById('f').submit();
-                    </script>
+                </script>
             </body>
         </html>
-        `
-    );
+    `);
 });
 
 App.post('/player/growid/login/validate', async (req: Request, res: Response) => {
-    const formData = req.body as Record<string, string>;
-    const _token = formData._token;
-    const growId = formData.growId;
-    const password = formData.password;
+    const body = req.body;
 
-    let token = '';
-    token = Buffer.from(
-        `_token=${_token}&growId=${growId}&password=${password}`,
+    const params =
+        typeof body === 'string'
+            ? new URLSearchParams(body)
+            : new URLSearchParams(body);
+
+    const _token = params.get('_token') || '';
+    const growId = params.get('growId') || '';
+    const password = params.get('password') || '';
+
+    const token = Buffer.from(
+        `_token=${_token}&growId=${growId}&password=${password}`
     ).toString('base64');
 
     const device = get_device(req);
-    switch (device) {
-        case eDeviceManager.DEVICE_IOS:
-            res.setHeader('Content-Type', 'application/json');
-            return res.json({
-                status: 'success',
-                message: 'Account Validated.',
-                token,
-                url: '',
-                accountType: 'growtopia',
-            });
-            break;
-            
-        default:
-            res.send(JSON.stringify({
-                status: 'success',
-                message: 'Account Validated.',
-                token,
-                url: '',
-                accountType: 'growtopia',
-            }));
-            break;
+
+    const response = {
+        status: 'success',
+        message: 'Account Validated.',
+        token,
+        url: '',
+        accountType: 'growtopia',
+    };
+
+    if (device === eDeviceManager.DEVICE_IOS) {
+        res.setHeader('Content-Type', 'application/json');
+        return res.json(response);
     }
+
+    return res.send(JSON.stringify(response));
 });
 
 App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
@@ -174,7 +122,14 @@ App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
 
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
     try {
-        let clientData = req.body.clientData;
+        const body = req.body;
+
+        const params =
+            typeof body === 'string'
+                ? new URLSearchParams(body)
+                : new URLSearchParams(body);
+
+        const clientData = params.get('clientData');
 
         if (!clientData) {
             return res.json({
@@ -185,41 +140,32 @@ App.post('/player/growid/validate/checktoken', async (req: Request, res: Respons
 
         const token = Buffer.from(clientData).toString('base64');
         const device = get_device(req);
-        
-        switch (device) {
-            case eDeviceManager.DEVICE_IOS:
-                res.setHeader('Content-Type', 'application/json');
-                return res.json({
-                    status: 'success',
-                    message: 'Account Validated.',
-                    token,
-                    url: '',
-                    accountType: 'growtopia',
-                    accountAge: 2,
-                });
-                break;
-            
-            default:
-                res.send(JSON.stringify({
-                    status: 'success',
-                    message: 'Account Validated.',
-                    token,
-                    url: '',
-                    accountType: 'growtopia',
-                    accountAge: 2,
-                }));
-                break;
+
+        const response = {
+            status: 'success',
+            message: 'Account Validated.',
+            token,
+            url: '',
+            accountType: 'growtopia',
+            accountAge: 2,
+        };
+
+        if (device === eDeviceManager.DEVICE_IOS) {
+            res.setHeader('Content-Type', 'application/json');
+            return res.json(response);
         }
-    }
-    catch (error) {
-        console.log(`[ERROR]: ${error}`);
-        res.json({
+
+        return res.send(JSON.stringify(response));
+    } catch (err) {
+        console.log('[ERROR]:', err);
+        return res.json({
             status: 'error',
             message: 'Internal Server Error',
         });
     }
 });
 
+/* ================= START ================= */
 App.listen(Port, () => {
     console.log(`[SERVER] Running on http://localhost:${Port}`);
 });
