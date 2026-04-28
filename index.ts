@@ -90,7 +90,7 @@ App.post('/player/login/dashboard', (req: Request, res: Response) => {
     const growId = data['tankIDName'] || '';
     const password = data['tankIDPass'] || '';
 
-    const token = Buffer.from(`${growId}:${password}`).toString('base64');
+    const token = Buffer.from(JSON.stringify(data)).toString('base64');
 
     return res.send(`
         <html>
@@ -128,7 +128,7 @@ App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     console.log('\n🔑 [VALIDATE ROUTE] Mengecek Data Login...');
     console.log(`👤 GrowID   : ${growId === '' ? '(KOSONG / GUEST)' : growId}`);
     console.log(`🔒 Password : ${password === '' ? '(KOSONG)' : password}`);
-    console.log(`🎟️ Tokens    : ${parsedParams.get('_token')}`);
+    console.log(`🎟️ Tokens    : ${parsedParams.get('_token')?.toString('base64')}`);
     console.log('==========================================\n');
 
     const response = {
