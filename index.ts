@@ -3,7 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 const App = express();
 const Port = process.env.PORT || 3000;
 
-/* ================= DEVICE ================= */
+/* ================= DEVICE DETECTOR ================= */
 const eDeviceManager = {
     DEVICE_WINDOWS: 0,
     DEVICE_ANDROID: 1,
@@ -23,27 +23,27 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= RAW CAPTURE ================= */
-function captureRawBody() {
-    return (req: Request, _res: Response, next: NextFunction) => {
-        let raw = '';
+/* ================= RAW BODY CAPTURE ================= */
+function rawCapture(req: Request, _res: Response, next: NextFunction) {
+    let raw = '';
 
-        req.on('data', chunk => {
-            raw += chunk;
-        });
+    req.on('data', chunk => {
+        raw += chunk;
+    });
 
-        req.on('end', () => {
-            (req as any).rawBody = raw || '';
-            next();
-        });
-    };
+    req.on('end', () => {
+        (req as any).rawBody = raw || '';
+        next();
+    });
 }
 
 /* ================= GROWTOPIA PARSER ================= */
 function parseGrowtopia(raw: string) {
-    const decoded = decodeURIComponent(raw || '');
-    const lines = decoded.split('\n');
+    if (!raw) return {};
 
+    const decoded = decodeURIComponent(raw);
+
+    const lines = decoded.split('\n');
     const data: Record<string, string> = {};
 
     for (const line of lines) {
@@ -56,19 +56,23 @@ function parseGrowtopia(raw: string) {
     return data;
 }
 
-/* ================= MIDDLEWARE ================= */
+/* ================= EXPRESS CONFIG ================= */
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
-/* IMPORTANT: RAW FIRST */
-App.use(captureRawBody());
+/* IMPORTANT ORDER */
+App.use(rawCapture); // <- WAJIB DI ATAS
+App.use(express.urlencoded({ extended: true }));
+App.use(express.json());
+App.use(express.text({ type: '*/*' }));
 
-/* DEBUG */
+/* ================= DEBUG (SAFE) ================= */
 App.use((req: Request, _res: Response, next: NextFunction) => {
     console.log('==============================');
     console.log('CONTENT-TYPE:', req.headers['content-type'] || 'NONE');
-    console.log('RAW BODY:', (req as any).rawBody || 'EMPTY');
+    console.log('RAW BODY:', (req as any).rawBody || '<<< EMPTY >>>');
     console.log('==============================');
+
     next();
 });
 
@@ -76,7 +80,7 @@ App.use((req: Request, _res: Response, next: NextFunction) => {
 
 /* DASHBOARD */
 App.post('/player/login/dashboard', async (req: Request, res: Response) => {
-    const raw = (req as any).rawBody;
+    const raw = (req as any).rawBody || '';
     const data = parseGrowtopia(raw);
 
     const tokenRaw = data['_token'] || '';
@@ -102,9 +106,9 @@ App.post('/player/login/dashboard', async (req: Request, res: Response) => {
     `);
 });
 
-/* VALIDATE LOGIN */
+/* VALIDATE */
 App.post('/player/growid/login/validate', async (req: Request, res: Response) => {
-    const raw = (req as any).rawBody;
+    const raw = (req as any).rawBody || '';
     const data = parseGrowtopia(raw);
 
     const _token = data['_token'] || '';
@@ -132,7 +136,7 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
 
 /* CHECK TOKEN */
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
-    const raw = (req as any).rawBody;
+    const raw = (req as any).rawBody || '';
     const data = parseGrowtopia(raw);
 
     const clientData = data['clientData'];
