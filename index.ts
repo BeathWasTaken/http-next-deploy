@@ -23,7 +23,7 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= SAFE PARSER ================= */
+/* ================= SAFE BODY PARSER ================= */
 function parseBody(req: Request): URLSearchParams {
     const body = req.body;
 
@@ -40,31 +40,21 @@ function parseBody(req: Request): URLSearchParams {
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
-/* ORDER FIXED */
+/* IMPORTANT ORDER */
 App.use(express.urlencoded({ extended: true }));
 App.use(express.json());
 App.use(express.text({ type: '*/*' }));
 
-/* ================= RAW DEBUG (IMPORTANT) ================= */
+/* ================= DEBUG (NO CRASH) ================= */
 App.use((req: Request, _res: Response, next: NextFunction) => {
-    let raw = '';
+    console.log('====================');
+    console.log('CONTENT-TYPE:', req.headers['content-type'] || 'NONE');
+    console.log('BODY TYPE:', typeof req.body);
+    console.log('BODY RAW:', req.body ?? 'NULL');
+    console.log(`[REQ] ${req.method} ${req.path}`);
+    console.log('====================');
 
-    req.on('data', chunk => {
-        raw += chunk;
-    });
-
-    req.on('end', () => {
-        (req as any).rawBody = raw;
-
-        console.log('==============================');
-        console.log('CONTENT-TYPE:', req.headers['content-type']);
-        console.log('BODY TYPE:', typeof req.body);
-        console.log('BODY PARSED:', req.body);
-        console.log('RAW STREAM:', raw || '<<< EMPTY >>>');
-        console.log('==============================');
-
-        next();
-    });
+    next();
 });
 
 /* ================= ROUTES ================= */
@@ -96,7 +86,7 @@ App.post('/player/login/dashboard', async (req: Request, res: Response) => {
     `);
 });
 
-/* VALIDATE */
+/* VALIDATE LOGIN */
 App.post('/player/growid/login/validate', async (req: Request, res: Response) => {
     const params = parseBody(req);
 
