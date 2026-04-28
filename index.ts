@@ -91,7 +91,11 @@ App.use((req: Request, _res: Response, next: NextFunction) => {
 /* DASHBOARD */
 App.post('/player/login/dashboard', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
-    const data = parseGrowtopiaPacket(raw);
+    const data = parseGrowtopiaPacket(raw); // <-- Di sini data ruwet diubah jadi rapi
+
+    // Coba tambahkan ini untuk melihat data yang sudah rapi di terminal:
+    console.log("[INFO] Seseorang membuka dashboard. Data yang terbaca:");
+    console.log(data); 
 
     const growId = data['tankIDName'] || '';
     const password = data['tankIDPass'] || '';
