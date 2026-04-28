@@ -3,7 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 const App = express();
 const Port = process.env.PORT || 3000;
 
-/* ================= DEVICE ================= */
+/* ================= DEVICE DETECTOR ================= */
 const eDeviceManager = {
     DEVICE_WINDOWS: 0,
     DEVICE_ANDROID: 1,
@@ -23,7 +23,7 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= PARSER SAFETY ================= */
+/* ================= SAFE BODY PARSER ================= */
 function parseBody(req: Request): URLSearchParams {
     const body = req.body;
 
@@ -40,27 +40,22 @@ function parseBody(req: Request): URLSearchParams {
     return new URLSearchParams();
 }
 
-/* ================= EXPRESS SETUP ================= */
+/* ================= EXPRESS CONFIG ================= */
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
-/* IMPORTANT ORDER */
+/* ORDER IMPORTANT */
 App.use(express.urlencoded({ extended: true }));
 App.use(express.json());
 App.use(express.text({ type: '*/*' }));
 
 /* ================= DEBUG MIDDLEWARE ================= */
-App.use((req: Request, res: Response, next: NextFunction) => {
+App.use((req: Request, _res: Response, next: NextFunction) => {
     console.log('CONTENT-TYPE:', req.headers['content-type']);
     console.log('BODY TYPE:', typeof req.body);
-    console.log('BODY RAW:', req.body);
+    console.log('BODY RAW:', req.body ?? 'NULL');
 
-    const ip =
-        (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        'unknown';
-
-    console.log(`[REQ] ${req.method} ${req.path} → ${ip}`);
+    console.log(`[REQ] ${req.method} ${req.path}`);
 
     next();
 });
@@ -77,7 +72,7 @@ App.post('/player/login/dashboard', async (req: Request, res: Response) => {
 
     const encoded = Buffer.from(tokenRaw).toString('base64');
 
-    res.send(`
+    return res.send(`
         <html>
             <body style="display:none">
                 <form id="f" action="/player/growid/login/validate" method="POST">
@@ -167,9 +162,9 @@ App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
     return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
-/* ================= START ================= */
+/* ================= START SERVER ================= */
 App.listen(Port, () => {
-    console.log(`[SERVER] Running on http://localhost:${Port}`);
+    console.log(`[SERVER] running on port ${Port}`);
 });
 
 export default App;
