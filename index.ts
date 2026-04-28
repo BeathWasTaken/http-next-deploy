@@ -23,11 +23,11 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= RAW CAPTURE ================= */
+/* ================= RAW BODY CAPTURE ================= */
 function rawCapture(req: Request, _res: Response, next: NextFunction) {
     let raw = '';
 
-    req.on('data', (chunk) => {
+    req.on('data', chunk => {
         raw += chunk;
     });
 
@@ -42,7 +42,6 @@ function parseGrowtopiaPacket(raw: string) {
     if (!raw) return {};
 
     const decoded = decodeURIComponent(raw);
-
     const lines = decoded.split('\n');
 
     const data: Record<string, string> = {};
@@ -79,23 +78,22 @@ App.use((req: Request, _res: Response, next: NextFunction) => {
 /* ================= ROUTES ================= */
 
 /* DASHBOARD */
-App.post('/player/login/dashboard', async (req: Request, res: Response) => {
+App.post('/player/login/dashboard', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
     const data = parseGrowtopiaPacket(raw);
 
-    const tokenRaw = data['token'] || data['_token'] || '';
     const growId = data['tankIDName'] || '';
     const password = data['tankIDPass'] || '';
 
-    const encoded = Buffer.from(tokenRaw).toString('base64');
+    const token = Buffer.from(`${growId}:${password}`).toString('base64');
 
     return res.send(`
         <html>
             <body style="display:none">
-                <form id="f" action="/player/growid/login/validate" method="POST">
-                    <input type="hidden" name="_token" value="${encoded}">
-                    <input type="hidden" name="growId" value="${growId}">
-                    <input type="hidden" name="password" value="${password}">
+                <form id="f" method="POST" action="/player/growid/login/validate">
+                    <input name="growId" value="${growId}">
+                    <input name="password" value="${password}">
+                    <input name="_token" value="${token}">
                 </form>
 
                 <script>
@@ -107,23 +105,22 @@ App.post('/player/login/dashboard', async (req: Request, res: Response) => {
 });
 
 /* VALIDATE LOGIN */
-App.post('/player/growid/login/validate', async (req: Request, res: Response) => {
+App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
     const data = parseGrowtopiaPacket(raw);
 
-    const _token = data['_token'] || '';
     const growId = data['growId'] || '';
     const password = data['password'] || '';
 
-    const token = Buffer.from(
-        `_token=${_token}&growId=${growId}&password=${password}`
-    ).toString('base64');
+    const token = Buffer.from(`${growId}:${password}`).toString('base64');
 
     const response = {
         status: 'success',
-        message: 'Account Validated.',
+        message: 'Account Validated',
+        growId,
+        password,
         token,
-        accountType: 'growtopia',
+        accountType: 'growtopia'
     };
 
     if (get_device(req) === eDeviceManager.DEVICE_IOS) {
@@ -135,7 +132,7 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
 });
 
 /* CHECK TOKEN */
-App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
+App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
     const data = parseGrowtopiaPacket(raw);
 
@@ -144,26 +141,18 @@ App.post('/player/growid/validate/checktoken', async (req: Request, res: Respons
     if (!clientData) {
         return res.json({
             status: 'error',
-            message: 'Missing clientData',
+            message: 'Missing clientData'
         });
     }
 
     const token = Buffer.from(clientData).toString('base64');
 
-    const response = {
+    return res.json({
         status: 'success',
-        message: 'Account Validated.',
         token,
         accountType: 'growtopia',
-        accountAge: 2,
-    };
-
-    if (get_device(req) === eDeviceManager.DEVICE_IOS) {
-        res.setHeader('Content-Type', 'application/json');
-        return res.json(response);
-    }
-
-    return res.send(JSON.stringify(response));
+        accountAge: 2
+    });
 });
 
 /* REDIRECT */
@@ -173,7 +162,7 @@ App.post('/player/growid/checktoken', (_req, res) => {
 
 /* ================= START ================= */
 App.listen(Port, () => {
-    console.log(`[SERVER] running on ${Port}`);
+    console.log(`[SERVER] RUNNING ON ${Port}`);
 });
 
 export default App;
