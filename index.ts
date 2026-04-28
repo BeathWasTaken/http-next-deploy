@@ -24,11 +24,15 @@ function get_device(req: Request) {
 }
 
 /* ================= RAW BODY CAPTURE ================= */
-function rawCapture(req: Request, _res: Response, next: NextFunction) {
+function rawCapture(req: Request, res: Response, next: NextFunction) {
     let raw = '';
-
+    
+    // Tambahkan pengaman agar server tidak overload jika payload terlalu besar
     req.on('data', chunk => {
         raw += chunk;
+        if (raw.length > 1e6) { // Limit 1MB
+            req.destroy();
+        }
     });
 
     req.on('end', () => {
@@ -41,9 +45,15 @@ function rawCapture(req: Request, _res: Response, next: NextFunction) {
 function parseGrowtopiaPacket(raw: string) {
     if (!raw) return {};
 
-    const decoded = decodeURIComponent(raw);
+    // Tangani kemungkinan error saat decoding
+    let decoded = '';
+    try {
+        decoded = decodeURIComponent(raw);
+    } catch (e) {
+        decoded = raw; 
+    }
+    
     const lines = decoded.split('\n');
-
     const data: Record<string, string> = {};
 
     for (const line of lines) {
@@ -69,6 +79,7 @@ App.use(rawCapture);
 /* ================= DEBUG ================= */
 App.use((req: Request, _res: Response, next: NextFunction) => {
     console.log('==============================');
+    console.log('URL:', req.url);
     console.log('CONTENT-TYPE:', req.headers['content-type'] || 'NONE');
     console.log('RAW BODY:', (req as any).rawBody || '<<< EMPTY >>>');
     console.log('==============================');
@@ -107,12 +118,13 @@ App.post('/player/login/dashboard', (req: Request, res: Response) => {
 /* VALIDATE LOGIN */
 App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
-    const data = parseGrowtopiaPacket(raw);
+    
+    // PERBAIKAN: Karena ini hasil submit dari form HTML, kita parse sebagai URLSearchParams
+    const parsedParams = new URLSearchParams(raw);
 
-    const growId = data['growId'] || '';
-    const password = data['password'] || '';
-
-    const token = Buffer.from(`${growId}:${password}`).toString('base64');
+    const growId = parsedParams.get('growId') || '';
+    const password = parsedParams.get('password') || '';
+    const token = parsedParams.get('_token') || Buffer.from(`${growId}:${password}`).toString('base64');
 
     const response = {
         status: 'success',
@@ -162,7 +174,7 @@ App.post('/player/growid/checktoken', (_req, res) => {
 
 /* ================= START ================= */
 App.listen(Port, () => {
-    console.log(`[SERVER] RUNNING ON ${Port}`);
+    console.log(`[SERVER] RUNNING ON PORT ${Port}`);
 });
 
 export default App;
