@@ -33,6 +33,19 @@ function get_device(req: Request) {
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
+App.use((req, res, next) => {
+    let data = '';
+
+    req.on('data', chunk => {
+        data += chunk;
+    });
+
+    req.on('end', () => {
+        (req as any).rawBody = data;
+        next();
+    });
+});
+
 App.use(express.text({ type: '*/*' }));
 App.use(express.json());
 App.use(express.urlencoded({ extended: true }));
@@ -41,7 +54,7 @@ App.use((req: Request, res: Response, next: NextFunction) => {
 
     console.log('CONTENT-TYPE:', req.headers['content-type']);
     console.log('BODY TYPE:', typeof req.body);
-    console.log('BODY RAW:', req.body);
+    console.log("RAW BODY FINAL:", (req as any).rawBody);
 
     const clientIp =
         (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -78,7 +91,7 @@ App.all('/', (_req: Request, res: Response) => {
 });
 
 App.post('/player/login/dashboard', async (req: Request, res: Response) => {
-    const body = req.body;
+    const body = (req as any).rawBody || '';
     let clientData = '';
 
     if (typeof body === 'string') {
