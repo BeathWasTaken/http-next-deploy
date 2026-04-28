@@ -74,9 +74,6 @@ function GrowtopiaIOSPacket(raw: string) {
 
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
-
-App.use(express.json());
-App.use(express.urlencoded({ extended: true }));
 App.use(rawCapture);
 
 App.use((req: Request, res: Response, next: NextFunction) => {
