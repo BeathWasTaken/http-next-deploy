@@ -32,9 +32,10 @@ function get_device(req: Request) {
 
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
+
+App.use(express.text({ type: '*/*' }));
 App.use(express.json());
 App.use(express.urlencoded({ extended: true }));
-App.use(express.text({ type: '*/*' }));
 
 App.use((req: Request, res: Response, next: NextFunction) => {
 
