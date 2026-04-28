@@ -165,7 +165,7 @@ App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => 
         });
     }
 
-    const token = Buffer.from(clientData).toString('base64');
+    const token = Buffer.from(JSON.stringify(data)).toString('base64');
 
     return res.json({
         status: 'success',
