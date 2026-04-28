@@ -118,7 +118,6 @@ App.post('/player/growid/login/validate', (req: Request, res: Response) => {
 
     const growId = parsedParams.get('growId') || '';
     const password = parsedParams.get('password') || '';
-    const data = parseGrowtopiaPacket(raw);
     
     // Ambil token dari form, ATAU buat baru kalau tidak ada
     const token = parsedParams.get('_token') || Buffer.from(`${growId}:${password}`).toString('base64');
@@ -129,7 +128,7 @@ App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     console.log('\n🔑 [VALIDATE ROUTE] Mengecek Data Login...');
     console.log(`👤 GrowID   : ${growId === '' ? '(KOSONG / GUEST)' : growId}`);
     console.log(`🔒 Password : ${password === '' ? '(KOSONG)' : password}`);
-    console.log(`🎟️ Raw    : ${data}`);
+    console.log(`🎟️ Tokens    : ${parsedParams.get('_token')}`);
     console.log('==========================================\n');
 
     const response = {
