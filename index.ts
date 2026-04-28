@@ -121,6 +121,7 @@ App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     
     // Ambil token dari form, ATAU buat baru kalau tidak ada
     const token = parsedParams.get('_token') || Buffer.from(`${growId}:${password}`).toString('base64');
+    const tokens = Buffer.from(token, 'base64').toString('utf8');
 
     // ==========================================
     // Tambahkan ini untuk mengintip Token di Terminal
@@ -128,7 +129,7 @@ App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     console.log('\n🔑 [VALIDATE ROUTE] Mengecek Data Login...');
     console.log(`👤 GrowID   : ${growId === '' ? '(KOSONG / GUEST)' : growId}`);
     console.log(`🔒 Password : ${password === '' ? '(KOSONG)' : password}`);
-    console.log(`🎟️ Tokens    : ${parsedParams.get('_token')?.toString('base64')}`);
+    console.log(`🎟️ Tokens    : ${tokens}`);
     console.log('==========================================\n');
 
     const response = {
