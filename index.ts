@@ -154,6 +154,8 @@ App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => 
     const raw = (req as any).rawBody || '';
     const data = parseGrowtopiaPacket(raw);
 
+    console.log(data);
+
     const token = Buffer.from(JSON.stringify(data)).toString('base64');
 
     res.send(JSON.stringify({
