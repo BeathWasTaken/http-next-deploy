@@ -3,7 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 const App = express();
 const Port = process.env.PORT || 3000;
 
-/* ================= DEVICE DETECTOR ================= */
+/* ================= DEVICE ================= */
 const eDeviceManager = {
     DEVICE_WINDOWS: 0,
     DEVICE_ANDROID: 1,
@@ -23,19 +23,15 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= SAFE BODY PARSER ================= */
+/* ================= SAFE PARSER ================= */
 function parseBody(req: Request): URLSearchParams {
     const body = req.body;
 
     if (!body) return new URLSearchParams();
 
-    if (typeof body === 'string') {
-        return new URLSearchParams(body);
-    }
+    if (typeof body === 'string') return new URLSearchParams(body);
 
-    if (typeof body === 'object') {
-        return new URLSearchParams(body as any);
-    }
+    if (typeof body === 'object') return new URLSearchParams(body as any);
 
     return new URLSearchParams();
 }
@@ -44,25 +40,36 @@ function parseBody(req: Request): URLSearchParams {
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
-/* ORDER IMPORTANT */
+/* ORDER FIXED */
 App.use(express.urlencoded({ extended: true }));
 App.use(express.json());
 App.use(express.text({ type: '*/*' }));
 
-/* ================= DEBUG MIDDLEWARE ================= */
+/* ================= RAW DEBUG (IMPORTANT) ================= */
 App.use((req: Request, _res: Response, next: NextFunction) => {
-    console.log('CONTENT-TYPE:', req.headers['content-type']);
-    console.log('BODY TYPE:', typeof req.body);
-    console.log('BODY RAW:', req.body ?? 'NULL');
+    let raw = '';
 
-    console.log(`[REQ] ${req.method} ${req.path}`);
+    req.on('data', chunk => {
+        raw += chunk;
+    });
 
-    next();
+    req.on('end', () => {
+        (req as any).rawBody = raw;
+
+        console.log('==============================');
+        console.log('CONTENT-TYPE:', req.headers['content-type']);
+        console.log('BODY TYPE:', typeof req.body);
+        console.log('BODY PARSED:', req.body);
+        console.log('RAW STREAM:', raw || '<<< EMPTY >>>');
+        console.log('==============================');
+
+        next();
+    });
 });
 
 /* ================= ROUTES ================= */
 
-/* LOGIN DASHBOARD */
+/* DASHBOARD */
 App.post('/player/login/dashboard', async (req: Request, res: Response) => {
     const params = parseBody(req);
 
@@ -89,7 +96,7 @@ App.post('/player/login/dashboard', async (req: Request, res: Response) => {
     `);
 });
 
-/* VALIDATE LOGIN */
+/* VALIDATE */
 App.post('/player/growid/login/validate', async (req: Request, res: Response) => {
     const params = parseBody(req);
 
@@ -105,7 +112,6 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
         status: 'success',
         message: 'Account Validated.',
         token,
-        url: '',
         accountType: 'growtopia',
     };
 
@@ -119,52 +125,43 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
 
 /* CHECK TOKEN */
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
-    try {
-        const params = parseBody(req);
+    const params = parseBody(req);
 
-        const clientData = params.get('clientData');
+    const clientData = params.get('clientData');
 
-        if (!clientData) {
-            return res.json({
-                status: 'error',
-                message: 'Missing clientData',
-            });
-        }
-
-        const token = Buffer.from(clientData).toString('base64');
-
-        const response = {
-            status: 'success',
-            message: 'Account Validated.',
-            token,
-            url: '',
-            accountType: 'growtopia',
-            accountAge: 2,
-        };
-
-        if (get_device(req) === eDeviceManager.DEVICE_IOS) {
-            res.setHeader('Content-Type', 'application/json');
-            return res.json(response);
-        }
-
-        return res.send(JSON.stringify(response));
-    } catch (err) {
-        console.log('[ERROR]:', err);
+    if (!clientData) {
         return res.json({
             status: 'error',
-            message: 'Internal Server Error',
+            message: 'Missing clientData',
         });
     }
+
+    const token = Buffer.from(clientData).toString('base64');
+
+    const response = {
+        status: 'success',
+        message: 'Account Validated.',
+        token,
+        accountType: 'growtopia',
+        accountAge: 2,
+    };
+
+    if (get_device(req) === eDeviceManager.DEVICE_IOS) {
+        res.setHeader('Content-Type', 'application/json');
+        return res.json(response);
+    }
+
+    return res.send(JSON.stringify(response));
 });
 
 /* REDIRECT */
-App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
+App.post('/player/growid/checktoken', (_req, res) => {
     return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
-/* ================= START SERVER ================= */
+/* ================= START ================= */
 App.listen(Port, () => {
-    console.log(`[SERVER] running on port ${Port}`);
+    console.log(`[SERVER] running on ${Port}`);
 });
 
 export default App;
