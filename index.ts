@@ -1,9 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 
 const App = express();
-const Port = 3000;
+const Port = process.env.PORT || 3000;
 
-/* ================= DEVICE DETECTOR ================= */
+/* ================= DEVICE ================= */
 const eDeviceManager = {
     DEVICE_WINDOWS: 0,
     DEVICE_ANDROID: 1,
@@ -23,16 +23,33 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= MIDDLEWARE ================= */
+/* ================= PARSER SAFETY ================= */
+function parseBody(req: Request): URLSearchParams {
+    const body = req.body;
+
+    if (!body) return new URLSearchParams();
+
+    if (typeof body === 'string') {
+        return new URLSearchParams(body);
+    }
+
+    if (typeof body === 'object') {
+        return new URLSearchParams(body as any);
+    }
+
+    return new URLSearchParams();
+}
+
+/* ================= EXPRESS SETUP ================= */
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
-/* IMPORTANT: urutan parser */
+/* IMPORTANT ORDER */
 App.use(express.urlencoded({ extended: true }));
 App.use(express.json());
 App.use(express.text({ type: '*/*' }));
 
-/* DEBUG + LOGGING */
+/* ================= DEBUG MIDDLEWARE ================= */
 App.use((req: Request, res: Response, next: NextFunction) => {
     console.log('CONTENT-TYPE:', req.headers['content-type']);
     console.log('BODY TYPE:', typeof req.body);
@@ -50,14 +67,9 @@ App.use((req: Request, res: Response, next: NextFunction) => {
 
 /* ================= ROUTES ================= */
 
+/* LOGIN DASHBOARD */
 App.post('/player/login/dashboard', async (req: Request, res: Response) => {
-    const body = req.body;
-
-    // Parse aman (form-urlencoded / json / string)
-    const params =
-        typeof body === 'string'
-            ? new URLSearchParams(body)
-            : new URLSearchParams(body);
+    const params = parseBody(req);
 
     const tokenRaw = params.get('_token') || '';
     const growId = params.get('growId') || '';
@@ -82,13 +94,9 @@ App.post('/player/login/dashboard', async (req: Request, res: Response) => {
     `);
 });
 
+/* VALIDATE LOGIN */
 App.post('/player/growid/login/validate', async (req: Request, res: Response) => {
-    const body = req.body;
-
-    const params =
-        typeof body === 'string'
-            ? new URLSearchParams(body)
-            : new URLSearchParams(body);
+    const params = parseBody(req);
 
     const _token = params.get('_token') || '';
     const growId = params.get('growId') || '';
@@ -98,8 +106,6 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
         `_token=${_token}&growId=${growId}&password=${password}`
     ).toString('base64');
 
-    const device = get_device(req);
-
     const response = {
         status: 'success',
         message: 'Account Validated.',
@@ -108,7 +114,7 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
         accountType: 'growtopia',
     };
 
-    if (device === eDeviceManager.DEVICE_IOS) {
+    if (get_device(req) === eDeviceManager.DEVICE_IOS) {
         res.setHeader('Content-Type', 'application/json');
         return res.json(response);
     }
@@ -116,18 +122,10 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
     return res.send(JSON.stringify(response));
 });
 
-App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
-    return res.redirect(307, '/player/growid/validate/checktoken');
-});
-
+/* CHECK TOKEN */
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
     try {
-        const body = req.body;
-
-        const params =
-            typeof body === 'string'
-                ? new URLSearchParams(body)
-                : new URLSearchParams(body);
+        const params = parseBody(req);
 
         const clientData = params.get('clientData');
 
@@ -139,7 +137,6 @@ App.post('/player/growid/validate/checktoken', async (req: Request, res: Respons
         }
 
         const token = Buffer.from(clientData).toString('base64');
-        const device = get_device(req);
 
         const response = {
             status: 'success',
@@ -150,7 +147,7 @@ App.post('/player/growid/validate/checktoken', async (req: Request, res: Respons
             accountAge: 2,
         };
 
-        if (device === eDeviceManager.DEVICE_IOS) {
+        if (get_device(req) === eDeviceManager.DEVICE_IOS) {
             res.setHeader('Content-Type', 'application/json');
             return res.json(response);
         }
@@ -163,6 +160,11 @@ App.post('/player/growid/validate/checktoken', async (req: Request, res: Respons
             message: 'Internal Server Error',
         });
     }
+});
+
+/* REDIRECT */
+App.post('/player/growid/checktoken', async (_req: Request, res: Response) => {
+    return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
 /* ================= START ================= */
