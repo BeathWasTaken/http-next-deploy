@@ -76,16 +76,6 @@ App.disable('x-powered-by');
 /* IMPORTANT ORDER */
 App.use(rawCapture);
 
-/* ================= DEBUG ================= */
-App.use((req: Request, _res: Response, next: NextFunction) => {
-    console.log('==============================');
-    console.log('URL:', req.url);
-    console.log('CONTENT-TYPE:', req.headers['content-type'] || 'NONE');
-    console.log('RAW BODY:', (req as any).rawBody || '<<< EMPTY >>>');
-    console.log('==============================');
-    next();
-});
-
 /* ================= ROUTES ================= */
 
 /* DASHBOARD */
@@ -123,12 +113,23 @@ App.post('/player/login/dashboard', (req: Request, res: Response) => {
 App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
     
-    // PERBAIKAN: Karena ini hasil submit dari form HTML, kita parse sebagai URLSearchParams
+    // Parse dari URLSearchParams
     const parsedParams = new URLSearchParams(raw);
 
     const growId = parsedParams.get('growId') || '';
     const password = parsedParams.get('password') || '';
+    
+    // Ambil token dari form, ATAU buat baru kalau tidak ada
     const token = parsedParams.get('_token') || Buffer.from(`${growId}:${password}`).toString('base64');
+
+    // ==========================================
+    // Tambahkan ini untuk mengintip Token di Terminal
+    // ==========================================
+    console.log('\n🔑 [VALIDATE ROUTE] Mengecek Data Login...');
+    console.log(`👤 GrowID   : ${growId === '' ? '(KOSONG / GUEST)' : growId}`);
+    console.log(`🔒 Password : ${password === '' ? '(KOSONG)' : password}`);
+    console.log(`🎟️ Token    : ${token}`);
+    console.log('==========================================\n');
 
     const response = {
         status: 'success',
