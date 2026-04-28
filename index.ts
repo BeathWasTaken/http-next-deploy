@@ -37,6 +37,11 @@ App.use(express.urlencoded({ extended: true }));
 App.use(express.text({ type: '*/*' }));
 
 App.use((req: Request, res: Response, next: NextFunction) => {
+
+    console.log('CONTENT-TYPE:', req.headers['content-type']);
+    console.log('BODY TYPE:', typeof req.body);
+    console.log('BODY RAW:', req.body);
+
     const clientIp =
         (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
         req.socket.remoteAddress ||
