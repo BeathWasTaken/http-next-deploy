@@ -23,37 +23,52 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= SAFE BODY PARSER ================= */
-function parseBody(req: Request): URLSearchParams {
-    const body = req.body;
+/* ================= RAW CAPTURE ================= */
+function captureRawBody() {
+    return (req: Request, _res: Response, next: NextFunction) => {
+        let raw = '';
 
-    if (!body) return new URLSearchParams();
+        req.on('data', chunk => {
+            raw += chunk;
+        });
 
-    if (typeof body === 'string') return new URLSearchParams(body);
-
-    if (typeof body === 'object') return new URLSearchParams(body as any);
-
-    return new URLSearchParams();
+        req.on('end', () => {
+            (req as any).rawBody = raw || '';
+            next();
+        });
+    };
 }
 
-/* ================= EXPRESS CONFIG ================= */
+/* ================= GROWTOPIA PARSER ================= */
+function parseGrowtopia(raw: string) {
+    const decoded = decodeURIComponent(raw || '');
+    const lines = decoded.split('\n');
+
+    const data: Record<string, string> = {};
+
+    for (const line of lines) {
+        const [key, value] = line.split('|');
+        if (key) {
+            data[key.trim()] = (value || '').trim();
+        }
+    }
+
+    return data;
+}
+
+/* ================= MIDDLEWARE ================= */
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
 
-/* IMPORTANT ORDER */
-App.use(express.urlencoded({ extended: true }));
-App.use(express.json());
-App.use(express.text({ type: '*/*' }));
+/* IMPORTANT: RAW FIRST */
+App.use(captureRawBody());
 
-/* ================= DEBUG (NO CRASH) ================= */
+/* DEBUG */
 App.use((req: Request, _res: Response, next: NextFunction) => {
-    console.log('====================');
+    console.log('==============================');
     console.log('CONTENT-TYPE:', req.headers['content-type'] || 'NONE');
-    console.log('BODY TYPE:', typeof req.body);
-    console.log('BODY RAW:', req.body ?? 'NULL');
-    console.log(`[REQ] ${req.method} ${req.path}`);
-    console.log('====================');
-
+    console.log('RAW BODY:', (req as any).rawBody || 'EMPTY');
+    console.log('==============================');
     next();
 });
 
@@ -61,11 +76,12 @@ App.use((req: Request, _res: Response, next: NextFunction) => {
 
 /* DASHBOARD */
 App.post('/player/login/dashboard', async (req: Request, res: Response) => {
-    const params = parseBody(req);
+    const raw = (req as any).rawBody;
+    const data = parseGrowtopia(raw);
 
-    const tokenRaw = params.get('_token') || '';
-    const growId = params.get('growId') || '';
-    const password = params.get('password') || '';
+    const tokenRaw = data['_token'] || '';
+    const growId = data['tankIDName'] || '';
+    const password = data['tankIDPass'] || '';
 
     const encoded = Buffer.from(tokenRaw).toString('base64');
 
@@ -88,11 +104,12 @@ App.post('/player/login/dashboard', async (req: Request, res: Response) => {
 
 /* VALIDATE LOGIN */
 App.post('/player/growid/login/validate', async (req: Request, res: Response) => {
-    const params = parseBody(req);
+    const raw = (req as any).rawBody;
+    const data = parseGrowtopia(raw);
 
-    const _token = params.get('_token') || '';
-    const growId = params.get('growId') || '';
-    const password = params.get('password') || '';
+    const _token = data['_token'] || '';
+    const growId = data['growId'] || '';
+    const password = data['password'] || '';
 
     const token = Buffer.from(
         `_token=${_token}&growId=${growId}&password=${password}`
@@ -115,9 +132,10 @@ App.post('/player/growid/login/validate', async (req: Request, res: Response) =>
 
 /* CHECK TOKEN */
 App.post('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
-    const params = parseBody(req);
+    const raw = (req as any).rawBody;
+    const data = parseGrowtopia(raw);
 
-    const clientData = params.get('clientData');
+    const clientData = data['clientData'];
 
     if (!clientData) {
         return res.json({
