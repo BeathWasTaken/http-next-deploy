@@ -3,7 +3,6 @@ import express, { Request, Response, NextFunction } from 'express';
 const App = express();
 const Port = process.env.PORT || 3000;
 
-/* ================= DEVICE ================= */
 const eDeviceManager = {
     DEVICE_WINDOWS: 0,
     DEVICE_ANDROID: 1,
@@ -23,14 +22,12 @@ function get_device(req: Request) {
     return eDeviceManager.DEVICE_WINDOWS;
 }
 
-/* ================= RAW BODY CAPTURE ================= */
 function rawCapture(req: Request, res: Response, next: NextFunction) {
     let raw = '';
     
-    // Tambahkan pengaman agar server tidak overload jika payload terlalu besar
     req.on('data', chunk => {
         raw += chunk;
-        if (raw.length > 1e6) { // Limit 1MB
+        if (raw.length > 1e6) {
             req.destroy();
         }
     });
@@ -41,11 +38,9 @@ function rawCapture(req: Request, res: Response, next: NextFunction) {
     });
 }
 
-/* ================= GROWTOPIA PARSER ================= */
 function parseGrowtopiaPacket(raw: string) {
     if (!raw) return {};
 
-    // Tangani kemungkinan error saat decoding
     let decoded = '';
     try {
         decoded = decodeURIComponent(raw);
@@ -69,24 +64,14 @@ function parseGrowtopiaPacket(raw: string) {
     return data;
 }
 
-/* ================= EXPRESS CONFIG ================= */
 App.set('trust proxy', 1);
 App.disable('x-powered-by');
-
-/* IMPORTANT ORDER */
 App.use(rawCapture);
 
-/* ================= ROUTES ================= */
-
-/* DASHBOARD */
 App.post('/player/login/dashboard', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
-    const data = parseGrowtopiaPacket(raw); // <-- Di sini data ruwet diubah jadi rapi
-
-    // Coba tambahkan ini untuk melihat data yang sudah rapi di terminal:
-    console.log("[INFO] Seseorang membuka dashboard. Data yang terbaca:");
-    console.log(data); 
-
+    const data = parseGrowtopiaPacket(raw);
+    
     const growId = data['tankIDName'] || '';
     const password = data['tankIDPass'] || '';
 
@@ -109,28 +94,16 @@ App.post('/player/login/dashboard', (req: Request, res: Response) => {
     `);
 });
 
-/* VALIDATE LOGIN */
 App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
     
-    // Parse dari URLSearchParams
     const parsedParams = new URLSearchParams(raw);
 
     const growId = parsedParams.get('growId') || '';
     const password = parsedParams.get('password') || '';
-    
-    // Ambil token dari form, ATAU buat baru kalau tidak ada
+
     const token = parsedParams.get('_token') || Buffer.from(`${growId}:${password}`).toString('base64');
     const tokens = Buffer.from(token, 'base64').toString('utf8');
-
-    // ==========================================
-    // Tambahkan ini untuk mengintip Token di Terminal
-    // ==========================================
-    console.log('\n🔑 [VALIDATE ROUTE] Mengecek Data Login...');
-    console.log(`👤 GrowID   : ${growId === '' ? '(KOSONG / GUEST)' : growId}`);
-    console.log(`🔒 Password : ${password === '' ? '(KOSONG)' : password}`);
-    console.log(`🎟️ Tokens    : ${tokens}`);
-    console.log('==========================================\n');
 
     const response = {
         status: 'success',
@@ -149,31 +122,26 @@ App.post('/player/growid/login/validate', (req: Request, res: Response) => {
     return res.send(JSON.stringify(response));
 });
 
-/* CHECK TOKEN */
 App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => {
     const raw = (req as any).rawBody || '';
     const data = parseGrowtopiaPacket(raw);
 
-    console.log(data);
-
     const token = Buffer.from(JSON.stringify(data)).toString('base64');
 
     res.send(JSON.stringify({
-                    status: 'success',
-                    message: 'Account Validated.',
-                    token,
-                    url: '',
-                    accountType: 'growtopia',
-                    accountAge: 2,
-                }));
+        status: 'success',
+        message: 'Account Validated.',
+        token,
+        url: '',
+        accountType: 'growtopia',
+        accountAge: 2,
+    }));
 });
 
-/* REDIRECT */
 App.post('/player/growid/checktoken', (_req, res) => {
     return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
-/* ================= START ================= */
 App.listen(Port, () => {
     console.log(`[SERVER] RUNNING ON PORT ${Port}`);
 });
